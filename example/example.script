@@ -1,0 +1,40 @@
+function init(self)
+	local s = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	local start = vmath.vector3(1, 1, 1)
+	local endp = vmath.vector3(4, 4, 4)
+	local map = {
+		{0, 0,0,0},
+		{-1,0,0,0},
+		{0, 0,0,0},
+		{0, 0,0,0}
+	};
+	local reverse_s = pathfinder.solve(map, start, endp)
+	for k, v in ipairs(reverse_s) do
+		print(v)
+	end
+end
+
+function final(self)
+	-- Add finalization code here
+	-- Remove this function if not needed
+end
+
+function update(self, dt)
+	-- Add update code here
+	-- Remove this function if not needed
+end
+
+function on_message(self, message_id, message, sender)
+	-- Add message-handling code here
+	-- Remove this function if not needed
+end
+
+function on_input(self, action_id, action)
+	-- Add input-handling code here
+	-- Remove this function if not needed
+end
+
+function on_reload(self)
+	-- Add reload-handling code here
+	-- Remove this function if not needed
+end
