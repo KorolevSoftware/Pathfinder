@@ -7,7 +7,8 @@
 #include <dmsdk/script/script.h>
 #include <dmsdk/sdk.h>
 
-#define luaIndexToC(i) i - 1
+// C/C++ start index by 1, Lua start index 1
+#define luaIndexToC(i) i - 1 
 #define cIndexToLua(i) i + 1
 
 typedef bool (*intComparator)(int value);
@@ -103,6 +104,7 @@ void RestorePath(dmArray<int>& path, int endPosition, dmArray<int> const& mapPro
     }
 }
 
+// http://lua-users.org/lists/lua-l/2004-04/msg00201.html
 static void RecursiveToDimToLinear(lua_State* L, dmArray<int>& linearArray){
     linearArray.OffsetCapacity(lua_objlen(L, -1));
     mapWidth = lua_objlen(L, -1);
@@ -128,8 +130,6 @@ void LinearIndexToTwoDim(int linearIndex, int& x, int& y) {
 }
 
 static int solve(lua_State* L) {
-    //DM_LUA_STACK_CHECK(L, 2);
-
     Vectormath::Aos::Vector3* start = dmScript::ToVector3(L, 2);
     Vectormath::Aos::Vector3* end = dmScript::ToVector3(L, 3);
     lua_pop(L, 2);
@@ -137,7 +137,6 @@ static int solve(lua_State* L) {
     dmArray<int> linearArray;
     RecursiveToDimToLinear(L, linearArray);
 
-    
     int startLinearIndex = TwoDimToLinear(luaIndexToC(start->getX()), luaIndexToC(start->getY()));
     int endLinearIndex = TwoDimToLinear(luaIndexToC(end->getX()), luaIndexToC(end->getY()));
 
@@ -166,8 +165,7 @@ static const luaL_reg Module_methods[] = {
     {0, 0}
 };
 
-static void LuaInit(lua_State* L)
-{
+static void LuaInit(lua_State* L) {
     int top = lua_gettop(L);
 
     // Register lua names
@@ -176,26 +174,22 @@ static void LuaInit(lua_State* L)
     lua_pop(L, 1);
     assert(top == lua_gettop(L));
 }
-dmExtension::Result AppInitializePathfinder(dmExtension::AppParams *params)
-{
+dmExtension::Result AppInitializePathfinder(dmExtension::AppParams *params) {
     return dmExtension::RESULT_OK;
 }
 
-dmExtension::Result InitializePathfinder(dmExtension::Params *params)
-{
+dmExtension::Result InitializePathfinder(dmExtension::Params *params) {
     // Init Lua
     LuaInit(params->m_L);
     printf("Registered %s Extension\n", MODULE_NAME);
     return dmExtension::RESULT_OK;
 }
 
-dmExtension::Result AppFinalizePathfinder(dmExtension::AppParams *params)
-{
+dmExtension::Result AppFinalizePathfinder(dmExtension::AppParams *params) {
     return dmExtension::RESULT_OK;
 }
 
-dmExtension::Result FinalizePathfinder(dmExtension::Params *params)
-{
+dmExtension::Result FinalizePathfinder(dmExtension::Params *params) {
     return dmExtension::RESULT_OK;
 }
 
