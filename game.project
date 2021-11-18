@@ -9,7 +9,7 @@ width = 960
 height = 640
 
 [project]
-title = Test Extensiom
+title = Pathfinder
 
 [library]
 include_dirs = pathfinder

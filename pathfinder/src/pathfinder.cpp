@@ -1,4 +1,4 @@
-// myextension.cpp
+// pathfinder.cpp
 // Extension lib defines
 
 #define LIB_NAME "Pathfinder"
@@ -78,7 +78,6 @@ bool WavePropagation(int startPosition, int endPosition, dmArray<int>& mapPropag
         }
         step++;
     } while (hasEmptyCell);
-
     return mapPropagation[endPosition] > 0;
 }
 
@@ -129,6 +128,23 @@ void LinearIndexToTwoDim(int linearIndex, int& x, int& y) {
     x = linearIndex % mapWidth;
 }
 
+bool CheckBound(int mapWidth, int mapSize, Vectormath::Aos::Vector3* value) {
+    int linearIndex = TwoDimToLinear(luaIndexToC(value->getX()), luaIndexToC(value->getY()));
+    if (linearIndex >= mapSize){
+        return false;
+    }
+
+    if (luaIndexToC(value->getX()) >= mapWidth){
+        return false;
+    }
+
+    if(value->getX() <= 0 || value->getY() <= 0 ) {
+        return false;
+    }
+
+    return true;
+}
+
 static int solve(lua_State* L) {
     Vectormath::Aos::Vector3* start = dmScript::ToVector3(L, 2);
     Vectormath::Aos::Vector3* end = dmScript::ToVector3(L, 3);
@@ -137,26 +153,33 @@ static int solve(lua_State* L) {
     dmArray<int> linearArray;
     RecursiveToDimToLinear(L, linearArray);
 
+    int mapSize = linearArray.Size();
     int startLinearIndex = TwoDimToLinear(luaIndexToC(start->getX()), luaIndexToC(start->getY()));
     int endLinearIndex = TwoDimToLinear(luaIndexToC(end->getX()), luaIndexToC(end->getY()));
 
-    if (WavePropagation(startLinearIndex, endLinearIndex, linearArray)) {
-        dmArray<int> path;
-        RestorePath(path, endLinearIndex, linearArray);
-        lua_createtable(L, 0, path.Size());
-        int index = 1;
-        for (int* valuePtr = path.End(); valuePtr != path.Begin(); valuePtr--, index++) {
-            int x, y;
-            LinearIndexToTwoDim(*valuePtr, x, y);
-            Vectormath::Aos::Vector3 point(cIndexToLua(x), cIndexToLua(y), 0);
-            lua_pushinteger(L, index);
-            dmScript::PushVector3(L, point);
-            lua_settable(L, -3);
-        }
-        return 1;
+    if(!CheckBound(mapWidth, mapSize, start) || !CheckBound(mapWidth, mapSize, end)) {
+        return 0;
     }
-    // Return 1 item
-    return 0;
+    
+    if (!WavePropagation(startLinearIndex, endLinearIndex, linearArray)) {
+        return 0;
+    }
+    
+    dmArray<int> path;
+    RestorePath(path, endLinearIndex, linearArray);
+    lua_createtable(L, 0, path.Size());
+    int index = 1;
+    for (int* valuePtr = path.End()-1; valuePtr != path.Begin()-1; valuePtr--, index++) {
+        int x, y;
+        LinearIndexToTwoDim(*valuePtr, x, y);
+        Vectormath::Aos::Vector3 point(cIndexToLua(x), cIndexToLua(y), 0);
+        lua_pushinteger(L, index);
+        dmScript::PushVector3(L, point);
+        lua_settable(L, -3);
+    }
+    
+    // Return table path
+    return 1;
 }
 
 // Functions exposed to Lua
