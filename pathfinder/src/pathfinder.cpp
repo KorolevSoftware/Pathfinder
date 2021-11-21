@@ -21,7 +21,7 @@ bool ValueEqualZero(int value) {
 }
 
 bool ValueLessCurrent(int value) {
-    return globalCurrentValue > value;
+    return globalCurrentValue > value && value > 0;
 }
 
 void BoxFilter(dmArray<int>& outIndexes, dmArray<int> const& data, int linearIndex, int dataWidth, intComparator comparator) {
