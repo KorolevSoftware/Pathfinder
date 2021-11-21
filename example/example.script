@@ -7,6 +7,7 @@ function init(self)
 		{0, 0,0,0},
 		{0, 0,0,0}
 	};
+
 	local path = pathfinder.solve(map, start, finish)
 	for k, v in ipairs(path) do
 		print(v)

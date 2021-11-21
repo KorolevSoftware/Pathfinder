@@ -7,7 +7,7 @@
 #include <dmsdk/script/script.h>
 #include <dmsdk/sdk.h>
 
-// C/C++ start index by 1, Lua start index 1
+// C/C++ start index by 0, Lua start index 1
 #define luaIndexToC(i) i - 1 
 #define cIndexToLua(i) i + 1
 
@@ -21,7 +21,7 @@ bool ValueEqualZero(int value) {
 }
 
 bool ValueLessCurrent(int value) {
-    return globalCurrentValue > value && value > 0;
+    return globalCurrentValue > value;
 }
 
 void BoxFilter(dmArray<int>& outIndexes, dmArray<int> const& data, int linearIndex, int dataWidth, intComparator comparator) {
@@ -29,6 +29,7 @@ void BoxFilter(dmArray<int>& outIndexes, dmArray<int> const& data, int linearInd
     int xnegative = linearIndex - 1;
     int ypositive = linearIndex + dataWidth;
     int ynegative = linearIndex - dataWidth;
+
     // x+
     if (linearIndex % dataWidth + 1 < dataWidth && comparator(data[xpositive])) {
         outIndexes.Push(xpositive);
@@ -48,8 +49,6 @@ void BoxFilter(dmArray<int>& outIndexes, dmArray<int> const& data, int linearInd
     if (ynegative >= 0 && comparator(data[ynegative])) {
         outIndexes.Push(ynegative);
     }
-
-    //return outIndexes;
 }
 
 bool WavePropagation(int startPosition, int endPosition, dmArray<int>& mapPropagation) {
@@ -65,6 +64,7 @@ bool WavePropagation(int startPosition, int endPosition, dmArray<int>& mapPropag
             if (mapPropagation[linearIndex] != step) {
                 continue;
             }
+
             dmArray<int> indexes;
             indexes.SetCapacity(4);
             BoxFilter(indexes, mapPropagation, linearIndex, mapWidth, ValueEqualZero);
@@ -73,7 +73,7 @@ bool WavePropagation(int startPosition, int endPosition, dmArray<int>& mapPropag
             }
 
             for (int* valuePtr = indexes.Begin(); valuePtr != indexes.End(); valuePtr++) {
-                mapPropagation[*valuePtr] = step + 1; 
+                mapPropagation[*valuePtr] = step + 1;
             }
         }
         step++;
@@ -104,7 +104,7 @@ void RestorePath(dmArray<int>& path, int endPosition, dmArray<int> const& mapPro
 }
 
 // http://lua-users.org/lists/lua-l/2004-04/msg00201.html
-static void RecursiveToDimToLinear(lua_State* L, dmArray<int>& linearArray){
+static void RecursiveParseToLinear(lua_State* L, dmArray<int>& linearArray){
     linearArray.OffsetCapacity(lua_objlen(L, -1));
     mapWidth = lua_objlen(L, -1);
     lua_pushnil(L);
@@ -113,7 +113,7 @@ static void RecursiveToDimToLinear(lua_State* L, dmArray<int>& linearArray){
             linearArray.Push(lua_tointeger(L, -1));
         }
         if (lua_istable(L, -1)) {
-            RecursiveToDimToLinear(L, linearArray);
+            RecursiveParseToLinear(L, linearArray);
         }
         lua_pop(L, 1);
     }
@@ -124,40 +124,45 @@ int TwoDimToLinear(int x, int y) {
 }
 
 void LinearIndexToTwoDim(int linearIndex, int& x, int& y) {
-    y = linearIndex/mapWidth;
+    y = linearIndex / mapWidth;
     x = linearIndex % mapWidth;
 }
 
-bool CheckBound(int mapWidth, int mapSize, Vectormath::Aos::Vector3* value) {
-    int linearIndex = TwoDimToLinear(luaIndexToC(value->getX()), luaIndexToC(value->getY()));
-    if (linearIndex >= mapSize){
+int MapHeight(int size, int mapWidth) {
+    return size / mapWidth;
+}
+
+bool CheckBound(int mapWidth, int mapHeight, dmVMath::Vector3* value) {
+    if (luaIndexToC(value->getX()) >= mapWidth || luaIndexToC(value->getY()) >= mapHeight) { // UP bound
         return false;
     }
 
-    if (luaIndexToC(value->getX()) >= mapWidth){
-        return false;
-    }
-
-    if(value->getX() <= 0 || value->getY() <= 0 ) {
+    if(value->getX() <= 0 || value->getY() <= 0 ) { // Down bound
         return false;
     }
 
     return true;
 }
 
+//lua_State:
+// 1 table
+// 2 Vector3
+// 3 Vector3
+
 static int solve(lua_State* L) {
-    Vectormath::Aos::Vector3* start = dmScript::ToVector3(L, 2);
-    Vectormath::Aos::Vector3* end = dmScript::ToVector3(L, 3);
+    dmVMath::Vector3* start = dmScript::ToVector3(L, 2);
+    dmVMath::Vector3* end = dmScript::ToVector3(L, 3);
     lua_pop(L, 2);
 
     dmArray<int> linearArray;
-    RecursiveToDimToLinear(L, linearArray);
+    RecursiveParseToLinear(L, linearArray);
 
     int mapSize = linearArray.Size();
+    int mapHeight = MapHeight(mapSize, mapWidth);
     int startLinearIndex = TwoDimToLinear(luaIndexToC(start->getX()), luaIndexToC(start->getY()));
     int endLinearIndex = TwoDimToLinear(luaIndexToC(end->getX()), luaIndexToC(end->getY()));
 
-    if(!CheckBound(mapWidth, mapSize, start) || !CheckBound(mapWidth, mapSize, end)) {
+    if(!CheckBound(mapWidth, mapHeight, start) || !CheckBound(mapWidth, mapHeight, end)) {
         return 0;
     }
     
@@ -172,8 +177,8 @@ static int solve(lua_State* L) {
     for (int* valuePtr = path.End()-1; valuePtr != path.Begin()-1; valuePtr--, index++) {
         int x, y;
         LinearIndexToTwoDim(*valuePtr, x, y);
-        Vectormath::Aos::Vector3 point(cIndexToLua(x), cIndexToLua(y), 0);
         lua_pushinteger(L, index);
+        dmVMath::Vector3 point(cIndexToLua(x), cIndexToLua(y), 0);
         dmScript::PushVector3(L, point);
         lua_settable(L, -3);
     }
@@ -204,7 +209,7 @@ dmExtension::Result AppInitializePathfinder(dmExtension::AppParams *params) {
 dmExtension::Result InitializePathfinder(dmExtension::Params *params) {
     // Init Lua
     LuaInit(params->m_L);
-    printf("Registered %s Extension\n", MODULE_NAME);
+    dmLogInfo("Registered %s Extension\n", MODULE_NAME);
     return dmExtension::RESULT_OK;
 }
 
@@ -216,7 +221,4 @@ dmExtension::Result FinalizePathfinder(dmExtension::Params *params) {
     return dmExtension::RESULT_OK;
 }
 
-
-// MyExtension is the C++ symbol that holds all relevant extension data.
-// It must match the name field in the `ext.manifest`
-DM_DECLARE_EXTENSION(Pathfinder, LIB_NAME, AppInitializePathfinder, AppFinalizePathfinder, InitializePathfinder, 0, 0, FinalizePathfinder)
+DM_DECLARE_EXTENSION(Pathfinder, LIB_NAME, AppInitializePathfinder, AppFinalizePathfinder, InitializePathfinder, NULL, NULL, FinalizePathfinder)
