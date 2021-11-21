@@ -149,6 +149,11 @@ bool CheckBound(int mapWidth, int mapHeight, dmVMath::Vector3* value) {
 // 2 Vector3
 // 3 Vector3
 
+int MakeEmptyTable(lua_State* L) {
+    lua_newtable(L);
+    return 1;
+}
+
 static int solve(lua_State* L) {
     dmVMath::Vector3* start = dmScript::ToVector3(L, 2);
     dmVMath::Vector3* end = dmScript::ToVector3(L, 3);
@@ -163,11 +168,11 @@ static int solve(lua_State* L) {
     int endLinearIndex = TwoDimToLinear(luaIndexToC(end->getX()), luaIndexToC(end->getY()));
 
     if(!CheckBound(mapWidth, mapHeight, start) || !CheckBound(mapWidth, mapHeight, end)) {
-        return 0;
+        return MakeEmptyTable(L);
     }
     
     if (!WavePropagation(startLinearIndex, endLinearIndex, linearArray)) {
-        return 0;
+        return MakeEmptyTable(L);
     }
     
     dmArray<int> path;
