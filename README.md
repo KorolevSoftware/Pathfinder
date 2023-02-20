@@ -6,7 +6,7 @@ Defold extension wave path finder
 You can use the Pathfinder extension in your own project by adding this project as a [Defold library dependency](http://www.defold.com/manuals/libraries/).
 Open your game.project file and in the dependencies field under project add:
 
->https://github.com/KorolevSoftware/Pathfinder/archive/master.zip
+>https://github.com/KorolevSoftware/Pathfinder/archive/v1.zip
 
 git release coming soon
 
