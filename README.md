@@ -8,8 +8,6 @@ Open your game.project file and in the dependencies field under project add:
 
 >https://github.com/KorolevSoftware/Pathfinder/archive/v1.zip
 
-git release coming soon
-
 ## Using
 
 -1 is block
