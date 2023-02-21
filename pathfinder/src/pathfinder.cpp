@@ -159,6 +159,7 @@ static int solve(lua_State* L) {
     dmVMath::Vector3* end = dmScript::ToVector3(L, 3);
     lua_pop(L, 2);
 
+
     dmArray<int> linearArray;
     RecursiveParseToLinear(L, linearArray);
 
@@ -191,10 +192,48 @@ static int solve(lua_State* L) {
     // Return table path
     return 1;
 }
+static int solve_near(lua_State* L) {
+    dmVMath::Vector3* start = dmScript::ToVector3(L, 2);
+    lua_pop(L, 1);
+
+    dmArray<int> linearArray;
+    RecursiveParseToLinear(L, linearArray);
+
+    int mapSize = linearArray.Size();
+    int mapHeight = MapHeight(mapSize, mapWidth);
+    int startLinearIndex = TwoDimToLinear(luaIndexToC(start->getX()), luaIndexToC(start->getY()));
+
+    if(!CheckBound(mapWidth, mapHeight, start)) {
+        return MakeEmptyTable(L);
+    }
+    
+    WavePropagation(startLinearIndex, 0, linearArray);
+    linearArray[startLinearIndex] = -1; // remove start position from table
+    lua_createtable(L, 0, linearArray.Size());
+    int index_table = 1;
+    for (int index = 1; index < linearArray.Size(); index++) {
+        int x, y;
+
+        if(linearArray[index] <= 0) {
+            continue;
+        }
+      
+        LinearIndexToTwoDim(index, x, y);
+        lua_pushinteger(L, index_table);
+        dmVMath::Vector3 point(cIndexToLua(x), cIndexToLua(y), 0);
+        dmScript::PushVector3(L, point);
+        lua_settable(L, -3);
+        index_table++;
+    }
+    
+    // Return table path
+    return 1;
+}
 
 // Functions exposed to Lua
 static const luaL_reg Module_methods[] = {
     {"solve", solve},
+    {"solve_near", solve_near},
     {0, 0}
 };
 
