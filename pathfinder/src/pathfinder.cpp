@@ -51,12 +51,16 @@ void BoxFilter(dmArray<int>& outIndexes, dmArray<int> const& data, int linearInd
     }
 }
 
-bool WavePropagation(int startPosition, int endPosition, dmArray<int>& mapPropagation) {
+bool WavePropagation(int startPosition, int endPosition, dmArray<int>& mapPropagation, dmArray<int>& index_by_steps, int steps_count = -1) {
     int step = 1;
     int startLinearIndex = startPosition;
     mapPropagation[startLinearIndex] = step;
     bool hasEmptyCell;
-
+    if (steps_count == -1) {
+        steps_count = mapPropagation.Size();
+    }
+    // dmArray<int> index_by_steps;
+    index_by_steps.SetCapacity(mapPropagation.Size());
     // Box filter
     do {
         hasEmptyCell = false;
@@ -74,7 +78,15 @@ bool WavePropagation(int startPosition, int endPosition, dmArray<int>& mapPropag
 
             for (int* valuePtr = indexes.Begin(); valuePtr != indexes.End(); valuePtr++) {
                 mapPropagation[*valuePtr] = step + 1;
+                index_by_steps.Push(*valuePtr);
+                
             }
+            if(!indexes.Empty()) {
+                steps_count--;
+            }
+        }
+        if (steps_count == 0) {
+            break;
         }
         step++;
     } while (hasEmptyCell);
@@ -155,8 +167,8 @@ int MakeEmptyTable(lua_State* L) {
 }
 
 static int solve(lua_State* L) {
-    dmVMath::Vector3* start = dmScript::ToVector3(L, 2);
-    dmVMath::Vector3* end = dmScript::ToVector3(L, 3);
+    dmVMath::Vector3* start = dmScript::CheckVector3(L, 2);
+    dmVMath::Vector3* end = dmScript::CheckVector3(L, 3);
     lua_pop(L, 2);
 
 
@@ -171,8 +183,8 @@ static int solve(lua_State* L) {
     if(!CheckBound(mapWidth, mapHeight, start) || !CheckBound(mapWidth, mapHeight, end)) {
         return MakeEmptyTable(L);
     }
-    
-    if (!WavePropagation(startLinearIndex, endLinearIndex, linearArray)) {
+    dmArray<int> index_by_steps;
+    if (!WavePropagation(startLinearIndex, endLinearIndex, linearArray, index_by_steps)) {
         return MakeEmptyTable(L);
     }
     
@@ -192,9 +204,11 @@ static int solve(lua_State* L) {
     // Return table path
     return 1;
 }
+
 static int solve_near(lua_State* L) {
-    dmVMath::Vector3* start = dmScript::ToVector3(L, 2);
-    lua_pop(L, 1);
+    dmVMath::Vector3* start = dmScript::CheckVector3(L, 2);
+    int steps_count = luaL_checknumber(L, 3);
+    lua_pop(L, 2);
 
     dmArray<int> linearArray;
     RecursiveParseToLinear(L, linearArray);
@@ -206,24 +220,18 @@ static int solve_near(lua_State* L) {
     if(!CheckBound(mapWidth, mapHeight, start)) {
         return MakeEmptyTable(L);
     }
-    
-    WavePropagation(startLinearIndex, 0, linearArray);
-    linearArray[startLinearIndex] = -1; // remove start position from table
-    lua_createtable(L, 0, linearArray.Size());
-    int index_table = 1;
-    for (int index = 1; index < linearArray.Size(); index++) {
-        int x, y;
 
-        if(linearArray[index] <= 0) {
-            continue;
-        }
-      
-        LinearIndexToTwoDim(index, x, y);
-        lua_pushinteger(L, index_table);
+    dmArray<int> index_by_steps;
+    WavePropagation(startLinearIndex, 0, linearArray, index_by_steps, steps_count);
+
+    lua_createtable(L, 0, index_by_steps.Size());
+    for (int index = 0; index < index_by_steps.Size(); index++) {
+        int x, y;
+        LinearIndexToTwoDim(index_by_steps[index], x, y);
+        lua_pushinteger(L, index + 1);
         dmVMath::Vector3 point(cIndexToLua(x), cIndexToLua(y), 0);
         dmScript::PushVector3(L, point);
         lua_settable(L, -3);
-        index_table++;
     }
     
     // Return table path
