@@ -52,6 +52,12 @@ void BoxFilter(dmArray<int>& outIndexes, dmArray<int> const& data, int linearInd
 }
 
 bool WavePropagation(int startPosition, int endPosition, dmArray<int>& mapPropagation, dmArray<int>& index_by_steps, int steps_count = -1) {
+    for(int index = 0; index < mapPropagation.Size(); index++) {
+        if (mapPropagation[index] > 0) {
+            mapPropagation[index] = 0;
+        }
+    }
+
     int step = 1;
     int startLinearIndex = startPosition;
     mapPropagation[startLinearIndex] = step;
@@ -79,18 +85,19 @@ bool WavePropagation(int startPosition, int endPosition, dmArray<int>& mapPropag
             for (int* valuePtr = indexes.Begin(); valuePtr != indexes.End(); valuePtr++) {
                 mapPropagation[*valuePtr] = step + 1;
                 index_by_steps.Push(*valuePtr);
-                
             }
+
             if(!indexes.Empty()) {
                 steps_count--;
             }
+
             if (steps_count == 0) {
                 break;
             }
         }
 
         step++;
-    } while (hasEmptyCell);
+    } while (hasEmptyCell && steps_count != 0);
     return mapPropagation[endPosition] > 0;
 }
 
