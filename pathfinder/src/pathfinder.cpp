@@ -84,10 +84,11 @@ bool WavePropagation(int startPosition, int endPosition, dmArray<int>& mapPropag
             if(!indexes.Empty()) {
                 steps_count--;
             }
+            if (steps_count == 0) {
+                break;
+            }
         }
-        if (steps_count == 0) {
-            break;
-        }
+
         step++;
     } while (hasEmptyCell);
     return mapPropagation[endPosition] > 0;
